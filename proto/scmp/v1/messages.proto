@@ -1,0 +1,157 @@
+syntax = "proto3";
+
+package scmp.v1;
+
+option go_package = "github.com/infodancer/scmp/proto/scmp/v1";
+
+// MessageService handles message submission, retrieval, and acceptance.
+// Client encrypts before handoff — server receives ciphertext only.
+service MessageService {
+  // SubmitMessage hands off an outbound message to the server for S2S delivery.
+  // The client provides a complete envelope and pre-encrypted payload.
+  rpc SubmitMessage(SubmitMessageRequest) returns (SubmitMessageResponse);
+
+  // ListMessages returns message summaries for a folder, paginated by cursor.
+  rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse);
+
+  // FetchMessage retrieves the full envelope and encrypted payload for a message.
+  rpc FetchMessage(FetchMessageRequest) returns (FetchMessageResponse);
+
+  // AcceptMessage explicitly accepts a pending message from transit into
+  // the user's store. Until acceptance, the message exists only in the
+  // sender's transit storage and may be retracted.
+  rpc AcceptMessage(AcceptMessageRequest) returns (AcceptMessageResponse);
+
+  // DeleteMessage removes a message from the user's store.
+  rpc DeleteMessage(DeleteMessageRequest) returns (DeleteMessageResponse);
+
+  // ListPending returns notifications for messages available in transit
+  // that have not yet been accepted.
+  rpc ListPending(ListPendingRequest) returns (ListPendingResponse);
+}
+
+message SubmitMessageRequest {
+  // Destination address (e.g. "bob@example.com").
+  string destination = 1;
+
+  // The serialized and signed envelope (created by the client).
+  bytes envelope = 2;
+
+  // The encrypted payload (encrypted to recipient's public key by the client).
+  bytes encrypted_payload = 3;
+
+  // Per-message transit expiry (Unix seconds). Server may enforce a maximum.
+  int64 transit_expiry = 4;
+}
+
+message SubmitMessageResponse {
+  // The protocol-generated message ID assigned to this message.
+  bytes message_id = 1;
+
+  // Server-attested acceptance timestamp.
+  int64 accepted_at = 2;
+}
+
+message ListMessagesRequest {
+  // Folder to list (e.g. "inbox", "sent"). Empty string for default inbox.
+  string folder = 1;
+
+  // Pagination cursor from a previous response. Empty for first page.
+  string cursor = 2;
+
+  // Maximum number of results per page.
+  uint32 limit = 3;
+}
+
+message ListMessagesResponse {
+  repeated MessageSummary messages = 1;
+
+  // Cursor for the next page. Empty if no more results.
+  string next_cursor = 2;
+}
+
+message MessageSummary {
+  // Protocol-assigned message ID.
+  bytes message_id = 1;
+
+  // Sender address (from envelope, verified by server).
+  string sender = 2;
+
+  // Declared MIME type hint.
+  string mime_type = 3;
+
+  // Payload size in bytes.
+  uint64 payload_size = 4;
+
+  // Sender-attested timestamp.
+  int64 timestamp = 5;
+
+  // Parent message ID if this is a reply.
+  bytes thread_id = 6;
+
+  // Message flags (read, flagged, etc.).
+  uint32 flags = 7;
+
+  // Folder this message belongs to.
+  string folder = 8;
+}
+
+// Well-known flag bits for MessageSummary.flags.
+enum MessageFlag {
+  MESSAGE_FLAG_UNSPECIFIED = 0;
+  MESSAGE_FLAG_READ = 1;
+  MESSAGE_FLAG_FLAGGED = 2;
+  MESSAGE_FLAG_ANSWERED = 4;
+  MESSAGE_FLAG_DRAFT = 8;
+}
+
+message FetchMessageRequest {
+  bytes message_id = 1;
+}
+
+message FetchMessageResponse {
+  // The message envelope.
+  bytes envelope = 1;
+
+  // The encrypted payload.
+  bytes encrypted_payload = 2;
+}
+
+message AcceptMessageRequest {
+  // The message ID to accept from transit into the user's store.
+  bytes message_id = 1;
+
+  // Folder to deliver into. Empty string for default inbox.
+  string folder = 2;
+}
+
+message AcceptMessageResponse {
+  // Server-attested acceptance timestamp.
+  int64 accepted_at = 1;
+}
+
+message DeleteMessageRequest {
+  bytes message_id = 1;
+}
+
+message DeleteMessageResponse {}
+
+message ListPendingRequest {
+  // Pagination cursor.
+  string cursor = 1;
+  uint32 limit = 2;
+}
+
+message ListPendingResponse {
+  repeated PendingMessage messages = 1;
+  string next_cursor = 2;
+}
+
+message PendingMessage {
+  bytes message_id = 1;
+  string sender_domain = 2;
+  string mime_type_hint = 3;
+  uint64 payload_size = 4;
+  int64 timestamp = 5;
+  int64 expiry = 6;
+}

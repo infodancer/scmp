@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package scmp.v1;
+
+option go_package = "github.com/infodancer/scmp/proto/scmp/v1";
+
+// FolderService handles mailbox organization.
+// Server-side hierarchical folders for IMAP bridge compatibility,
+// with label support as a future extension.
+service FolderService {
+  // ListFolders returns all folders for the authenticated user.
+  rpc ListFolders(ListFoldersRequest) returns (ListFoldersResponse);
+
+  // CreateFolder creates a new folder.
+  rpc CreateFolder(CreateFolderRequest) returns (CreateFolderResponse);
+
+  // DeleteFolder removes a folder. Messages in the folder are moved
+  // to the parent folder (or inbox if no parent).
+  rpc DeleteFolder(DeleteFolderRequest) returns (DeleteFolderResponse);
+
+  // RenameFolder renames an existing folder.
+  rpc RenameFolder(RenameFolderRequest) returns (RenameFolderResponse);
+
+  // MoveMessage moves a message between folders.
+  rpc MoveMessage(MoveMessageRequest) returns (MoveMessageResponse);
+}
+
+message ListFoldersRequest {}
+
+message ListFoldersResponse {
+  repeated Folder folders = 1;
+}
+
+message Folder {
+  // Folder name (e.g. "inbox", "sent", "drafts", "archive/2026").
+  string name = 1;
+
+  // Parent folder name. Empty for top-level folders.
+  string parent = 2;
+
+  // Total message count in this folder.
+  uint64 message_count = 3;
+
+  // Unread message count.
+  uint64 unread_count = 4;
+}
+
+message CreateFolderRequest {
+  string name = 1;
+  string parent = 2;
+}
+
+message CreateFolderResponse {
+  Folder folder = 1;
+}
+
+message DeleteFolderRequest {
+  string name = 1;
+}
+
+message DeleteFolderResponse {}
+
+message RenameFolderRequest {
+  string old_name = 1;
+  string new_name = 2;
+}
+
+message RenameFolderResponse {
+  Folder folder = 1;
+}
+
+message MoveMessageRequest {
+  bytes message_id = 1;
+  string destination_folder = 2;
+}
+
+message MoveMessageResponse {}

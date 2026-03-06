@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package scmp.v1;
+
+option go_package = "github.com/infodancer/scmp/proto/scmp/v1";
+
+// NotificationService provides real-time push notifications from server
+// to client via bidirectional gRPC streaming. The client maintains a
+// persistent stream; the server pushes events as they occur.
+service NotificationService {
+  // Subscribe opens a bidirectional stream. The server pushes events
+  // (new message, key change, etc.); the client sends acknowledgments
+  // and control messages (pause, resume, filter).
+  rpc Subscribe(stream ClientEvent) returns (stream ServerEvent);
+}
+
+// ServerEvent is pushed from server to client.
+message ServerEvent {
+  oneof event {
+    // A new message notification has arrived.
+    NewMessageEvent new_message = 1;
+
+    // A correspondent's key has changed.
+    KeyChangeEvent key_change = 2;
+
+    // A message the user sent has been fetched by the recipient.
+    MessageFetchedEvent message_fetched = 3;
+
+    // A previously sent message has expired without being fetched.
+    MessageExpiredEvent message_expired = 4;
+  }
+}
+
+message NewMessageEvent {
+  bytes message_id = 1;
+  string sender_domain = 2;
+  string mime_type_hint = 3;
+  uint64 payload_size = 4;
+  int64 timestamp = 5;
+  int64 expiry = 6;
+}
+
+message KeyChangeEvent {
+  // The address whose key changed.
+  string address = 1;
+  // New fingerprint.
+  bytes new_fingerprint = 2;
+  // Old fingerprint (for display to user).
+  bytes old_fingerprint = 3;
+}
+
+message MessageFetchedEvent {
+  // A message the user sent has been fetched (delivery inference).
+  bytes message_id = 1;
+  int64 fetched_at = 2;
+}
+
+message MessageExpiredEvent {
+  // A message the user sent expired without being fetched (inferred failure).
+  bytes message_id = 1;
+  int64 expired_at = 2;
+}
+
+// ClientEvent is sent from client to server on the same stream.
+message ClientEvent {
+  oneof event {
+    // Acknowledge receipt of a server event (by sequence number).
+    AckEvent ack = 1;
+
+    // Register hash addresses to watch for notifications.
+    RegisterHashesEvent register_hashes = 2;
+  }
+}
+
+message AckEvent {
+  // Sequence number of the server event being acknowledged.
+  uint64 sequence = 1;
+}
+
+message RegisterHashesEvent {
+  // Hash addresses to watch for incoming notifications.
+  // Server stores these in the user's pending reference table.
+  repeated bytes hashes = 1;
+}

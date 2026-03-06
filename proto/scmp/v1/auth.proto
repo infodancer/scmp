@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package scmp.v1;
+
+option go_package = "github.com/infodancer/scmp/proto/scmp/v1";
+
+// AuthService handles client authentication with its domain server.
+// A client has exactly one server relationship — its own domain.
+service AuthService {
+  // Authenticate establishes a session. Returns a session token and
+  // server capabilities. The client presents credentials; the server
+  // returns a scoped session.
+  rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse);
+
+  // Logout invalidates the current session.
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+}
+
+message AuthenticateRequest {
+  // The user's address (e.g. "alice@example.com").
+  string address = 1;
+
+  // Authentication method.
+  oneof credential {
+    PasswordCredential password = 2;
+    ClientCertCredential client_cert = 3;
+  }
+}
+
+message PasswordCredential {
+  string password = 1;
+
+  // Optional TOTP or hardware key second factor.
+  string second_factor = 2;
+}
+
+message ClientCertCredential {
+  // Client certificate presented via mTLS. The server validates
+  // the certificate against the user's published key.
+  // No additional fields needed — identity is in the TLS handshake.
+}
+
+message AuthenticateResponse {
+  // Session token for subsequent requests.
+  string session_token = 1;
+
+  // Session expiry (Unix seconds).
+  int64 expires_at = 2;
+
+  // Server capabilities advertised at auth time.
+  repeated string capabilities = 3;
+}
+
+message LogoutRequest {}
+message LogoutResponse {}

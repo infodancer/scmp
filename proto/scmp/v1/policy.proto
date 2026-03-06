@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package scmp.v1;
+
+option go_package = "github.com/infodancer/scmp/proto/scmp/v1";
+
+// PolicyService handles per-sender pull preferences, reputation thresholds,
+// and retention policies configured by the client.
+service PolicyService {
+  // SetPullPreference configures how the server handles notifications
+  // from a specific sender domain.
+  rpc SetPullPreference(SetPullPreferenceRequest) returns (SetPullPreferenceResponse);
+
+  // GetPullPreference retrieves the current pull preference for a sender domain.
+  rpc GetPullPreference(GetPullPreferenceRequest) returns (GetPullPreferenceResponse);
+
+  // ListPullPreferences returns all configured per-sender pull preferences.
+  rpc ListPullPreferences(ListPullPreferencesRequest) returns (ListPullPreferencesResponse);
+
+  // SetDefaultPolicy sets the default pull preference and retention policy
+  // for senders without a specific override.
+  rpc SetDefaultPolicy(SetDefaultPolicyRequest) returns (SetDefaultPolicyResponse);
+
+  // GetDefaultPolicy retrieves the current default policy.
+  rpc GetDefaultPolicy(GetDefaultPolicyRequest) returns (GetDefaultPolicyResponse);
+}
+
+// PullPreference controls how the server handles notifications from a sender.
+enum PullPreference {
+  // Server fetches automatically on notification.
+  PULL_PREFERENCE_IMMEDIATE = 0;
+
+  // Notification recorded; user or client initiates fetch. Default behavior.
+  PULL_PREFERENCE_ON_REQUEST = 1;
+
+  // Notification discarded without recording. Effective unsubscribe.
+  // The sender cannot distinguish between ignored, undelivered, and not-yet-pulled.
+  PULL_PREFERENCE_IGNORE = 2;
+}
+
+message SetPullPreferenceRequest {
+  // Sender domain to configure (e.g. "example.com").
+  string sender_domain = 1;
+
+  // The pull preference to set.
+  PullPreference preference = 2;
+}
+
+message SetPullPreferenceResponse {}
+
+message GetPullPreferenceRequest {
+  string sender_domain = 1;
+}
+
+message GetPullPreferenceResponse {
+  string sender_domain = 1;
+  PullPreference preference = 2;
+}
+
+message ListPullPreferencesRequest {}
+
+message ListPullPreferencesResponse {
+  repeated GetPullPreferenceResponse preferences = 1;
+}
+
+message SetDefaultPolicyRequest {
+  // Default pull preference for unknown senders.
+  PullPreference default_preference = 1;
+
+  // Default retention period for accepted messages (seconds). 0 = unlimited.
+  int64 retention_seconds = 2;
+}
+
+message SetDefaultPolicyResponse {}
+
+message GetDefaultPolicyRequest {}
+
+message GetDefaultPolicyResponse {
+  PullPreference default_preference = 1;
+  int64 retention_seconds = 2;
+}

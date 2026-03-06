@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+package scmp.v1;
+
+option go_package = "github.com/infodancer/scmp/proto/scmp/v1";
+
+// KeyService handles user key management through the C2S interface.
+// Users generate their own private keys and submit public keys for
+// domain signing. Domains MAY generate and escrow keys for non-technical
+// users, but SHOULD allow user-generated keys.
+service KeyService {
+  // SubmitPublicKey submits a user-generated public key for domain signing.
+  // The domain signs the key, asserting "this key belongs to this user at
+  // this domain."
+  rpc SubmitPublicKey(SubmitPublicKeyRequest) returns (SubmitPublicKeyResponse);
+
+  // GetSignedKey retrieves the user's domain-signed key for distribution.
+  rpc GetSignedKey(GetSignedKeyRequest) returns (GetSignedKeyResponse);
+
+  // RotateKey performs atomic key rotation: revokes the old key and
+  // publishes a new one. Timestamped and auditable. Triggers change
+  // notifications at all correspondent caches.
+  rpc RotateKey(RotateKeyRequest) returns (RotateKeyResponse);
+
+  // RevokeKey publishes a revocation for the current key without
+  // submitting a replacement.
+  rpc RevokeKey(RevokeKeyRequest) returns (RevokeKeyResponse);
+
+  // LookupKey retrieves another user's signed key (inbound key discovery).
+  // The server fetches from the target domain's KeyService via SDMP.
+  rpc LookupKey(LookupKeyRequest) returns (LookupKeyResponse);
+
+  // MonitorFingerprint checks the user's own published fingerprint.
+  // Alerts immediately if the domain changed it without user action.
+  // The user's client is their canary.
+  rpc MonitorFingerprint(MonitorFingerprintRequest) returns (MonitorFingerprintResponse);
+}
+
+message SubmitPublicKeyRequest {
+  // Public key algorithm (e.g. "Ed25519", "X25519").
+  string algorithm = 1;
+
+  // Public key material.
+  bytes public_key = 2;
+}
+
+message SubmitPublicKeyResponse {
+  // The domain-signed key record.
+  bytes fingerprint = 1;
+  bytes domain_signature = 2;
+  int64 valid_from = 3;
+  int64 valid_until = 4;
+}
+
+message GetSignedKeyRequest {}
+
+message GetSignedKeyResponse {
+  string algorithm = 1;
+  bytes public_key = 2;
+  bytes fingerprint = 3;
+  int64 valid_from = 4;
+  int64 valid_until = 5;
+  bool escrowed = 6;
+  bytes domain_signature = 7;
+}
+
+message RotateKeyRequest {
+  // New public key material.
+  string algorithm = 1;
+  bytes new_public_key = 2;
+}
+
+message RotateKeyResponse {
+  // New key fingerprint after rotation.
+  bytes new_fingerprint = 1;
+  bytes domain_signature = 2;
+  int64 valid_from = 3;
+  int64 valid_until = 4;
+}
+
+message RevokeKeyRequest {}
+
+message RevokeKeyResponse {
+  int64 revoked_at = 1;
+}
+
+message LookupKeyRequest {
+  // The address to look up (e.g. "bob@example.com").
+  string address = 1;
+}
+
+message LookupKeyResponse {
+  string address = 1;
+  string algorithm = 2;
+  bytes public_key = 3;
+  bytes fingerprint = 4;
+  int64 valid_from = 5;
+  int64 valid_until = 6;
+  bool revoked = 7;
+  bool escrowed = 8;
+  bytes domain_signature = 9;
+}
+
+message MonitorFingerprintRequest {}
+
+message MonitorFingerprintResponse {
+  // The fingerprint currently published by the domain.
+  bytes published_fingerprint = 1;
+
+  // Whether it matches the client's expected fingerprint.
+  bool matches_expected = 2;
+
+  // When the published key was last modified.
+  int64 last_modified = 3;
+}
