@@ -18,6 +18,7 @@ This is a new protocol designed from scratch. See the parent `infodancer/infodan
 - Push notification to client
 - Policy configuration (pull preferences, reputation thresholds, retention policies, hash address management)
 - Multi-device synchronization
+- Filter rule storage (planned): the server cannot filter messages (ciphertext, hashed addresses, no reject channel) -- filtering runs client-side after decryption. The server stores the rules as one canonical client-encrypted document that all of a user's clients fetch, execute, and update through C2S. Designed into the protocol rather than spending a separate port the way ManageSieve was. See infodancer docs/protocol-outlines.md C2S Problem 12.
 
 ### Key Design Principles
 
